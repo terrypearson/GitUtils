@@ -13,6 +13,7 @@ projectName=whateverYouWantToNameTheProject
 gitDirectory=/path/to/git/repository
 deployDirectory=/path/to/folder/for/zip/files/for/deploys
 
+
 #DO NOT CHANGE BELOW THIS LINE.
 
 currentTagValue=$1
@@ -24,9 +25,23 @@ zipFileName=${projectName}-${currentTagValue}-to-${newRepoTagValue}.zip
 #Move to git directory - When logging in remotely, this is not going to work!
 cd ${gitDirectory}
 
+#Getting the current branch name so we can return to it later
+gitBranchWeStartedOn=$(git symbolic-ref HEAD 2>/dev/null | cut -d"/" -f 3)
+
+git checkout ${newRepoTagValue}
 git --git-dir=${gitDirectory}/.git diff --name-only -a ${currentTagValue} ${newRepoTagValue} | xargs zip ${deployDirectory}/${zipFileName}
+
+echo $(git --git-dir=${gitDirectory}/.git diff --diff-filter=D --name-only -a ${currentTagValue} ${newRepoTagValue}) > ${deployDirectory}/deleteThese.txt
+
+#Returning repositoy to master
+git checkout ${gitBranchWeStartedOn}
+
+cd ${deployDirectory}
+
+zip -g ${zipFileName} deleteThese.txt
+
+rm deleteThese.txt
 
 echo "Deployed to ${deployDirectory}/${zipFileName}"
 
-echo "Please delete the following files:"
-echo $(git --git-dir=${gitDirectory}/.git diff --diff-filter=D --name-only -a ${currentTagValue} ${newRepoTagValue})
+echo "Please delete the files found in deleteThese.txt inside the zip file."
